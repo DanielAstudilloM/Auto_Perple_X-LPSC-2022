@@ -1,6 +1,6 @@
-# Auto_Perple_x
+# AutoPerple_X
 
-Library an file system for working with and automating calculations using Perple_X.
+Library and file system for working with and automating calculations using Perple_X.
 
 This public repository is meant to share the basic functions that we used to obtain the data for 
 our abstract and poster.
