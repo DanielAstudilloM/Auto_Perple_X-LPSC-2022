@@ -15,12 +15,22 @@ op_system = platform.system()
 
 def Auto_build(source,temp,pressure,mp="optimal"):
 
-    """Automates the creation of building files to be processed through vertex (or other command)
-    by using a template file and the 'build.exe' command
+    """Automates the creation of building files to be processed through vertex by using a template file 
+    and the 'build.exe' command
     
     Input: 
         source: tab delimited file with all samples to be used and their composition in columns.
                 First column must contain all element names and first row all sample names.
+
+        temp: list with initial and final temperature for modelling, ex: [1000,2000]
+
+        pressure: list with initial and final pressures for modelling in bar, ex [1,30000]
+
+        mp : type of multiprocessing, default "optimal". Options are:
+                 "optimal": for having as much instancesas possible without intereference from each other and minimal from os
+                 "intense": for having as much instances as cores in the CPU
+                 "single": for a single instance.
+                 int: manually define the number of instances you want to open, should not be higher than amount of compositions.
 
     
     Return:
@@ -100,6 +110,16 @@ def build_command(file):
     subprocess.run(ring,shell=True,stdout=subprocess.DEVNULL)
 
 def batcher(source, multiprocessing = "optimal"):
+    """Creates batch or bash files from which we can process all compositions with multiple instances of vertex
+    Input
+        source: directory of file with compositions
+        multiprocessing: type of multiprocessing, default "optimal". Options are:
+                 "optimal": for having as much instancesas possible without intereference from each other and minimal from os
+                 "intense": for having as much instances as cores in the CPU
+                 "single": for a single instance.
+                 int: manually define the number of instances you want to open, should not be higher than amount of compositions."""
+    
+    # Cpu core count and multiprocessing definitions
     cores =os.cpu_count()
     if multiprocessing == "optimal":
         if cores == 1 or cores == 2:
@@ -120,10 +140,12 @@ def batcher(source, multiprocessing = "optimal"):
     if type(multiprocessing) == int:
         c = multiprocessing
 
+    # File writing
     if "Windows" in op_system:
         if os.path.exists(bin_folder+"runner.bat"):
                 os.remove(bin_folder+"runner.bat")
         filey = open(bin_folder+"runner.bat","x")
+        filey.write("cd " + bin_folder + "\n")
         for v in range(c+1):
             if os.path.exists(bin_folder+"batch"+ str(v+1) + ".bat"):
                 os.remove(bin_folder+"batch"+ str(v+1) + ".bat")
@@ -148,7 +170,7 @@ def batcher(source, multiprocessing = "optimal"):
         if os.path.exists(bin_folder+"runner.sh"):
                 os.remove(bin_folder+"runner.sh")
         filey = open(bin_folder+"runner.sh","x")
-        filey.write("#!/bin/sh")
+        filey.write("#!/bin/sh\n" + "cd " + bin_folder + "\n")
         for v in range(c+1):
             if os.path.exists(bin_folder+"batch"+ str(v+1) + ".sh"):
                 os.remove(bin_folder+"batch"+ str(v+1) + ".sh")
@@ -198,12 +220,28 @@ def echo_file_mover(source,folder="results"):
         os.remove(echo_file)
 
 def mover (source, destination):
-    if not os.path.exists(destination):
-        os.makedirs(destination)
-    file_extensions = [".tof",".arf",".blk",".plt",".tim",".dat","_auto_refine.txt","_seismic_data.txt"]
-    for i in file_extensions:
-        sh.copy(bin_folder + str(source) + i, destination)
-    for i in file_extensions:
-        os.remove(bin_folder + str(source) + i)
+    """Moves perple_x files from build and vertex functions from source to destination
+        
+    Input
+        source: composition name
+        destination: Folder path
+        
+    Returns
+        No return"""
 
-Auto_build("compositions.txt",[1000,2000],[1,30000])
+    folder= destination + source +"/"
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    file_extensions = [".tof",".arf",".blk",".plt",".tim",".dat","_auto_refine.txt","_seismic_data.txt",".txt"]
+    for i in file_extensions:
+        if os.path.exists(bin_folder + str(source) + i):
+            sh.copy(bin_folder + str(source) + i, folder)
+    for i in file_extensions:
+        if os.path.exists(bin_folder + str(source) + i):
+            os.remove(bin_folder + str(source) + i)
+
+def runner():
+    if "Windows" in op_system:
+        subprocess.call("cd " + bin_folder + "&& call runner.bat",shell=True)
+    else:
+        subprocess.call("bash " + bin_folder + "runner.sh",shell=True)
